@@ -77,8 +77,11 @@ module Delayed
         opt.on('--exit-on-complete', 'Exit when no more jobs are available to run. This will exit if all jobs are scheduled to run in the future.') do
           @options[:exit_on_complete] = true
         end
+        opt.on('--daemon-options a, b, c', Array, 'options to be passed through to daemons gem') do |daemon_options|
+          @daemon_options = daemon_options
+        end
       end
-      @args = opts.parse!(args)
+      @args = opts.parse!(args) + (@daemon_options || [])
     end
 
     def daemonize # rubocop:disable PerceivedComplexity
@@ -88,11 +91,13 @@ module Delayed
       if worker_pools
         setup_pools
       elsif @options[:identifier]
+        # rubocop:disable GuardClause
         if worker_count > 1
           raise ArgumentError, 'Cannot specify both --number-of-workers and --identifier'
         else
           run_process("delayed_job.#{@options[:identifier]}", @options)
         end
+        # rubocop:enable GuardClause
       else
         worker_count.times do |worker_index|
           process_name = worker_count == 1 ? 'delayed_job' : "delayed_job.#{worker_index}"
